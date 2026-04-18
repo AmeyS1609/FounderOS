@@ -1,0 +1,126 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "DM Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-display: "Syne", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Premium Dark Palette */
+  --color-brand-primary: #7C3AED;
+  --color-brand-primary-gradient: #9333EA;
+  
+  --color-surface-0: #0F0F0F; /* Deep Background */
+  --color-surface-1: #1A1A1A; /* Base Card - Layer 1 */
+  --color-surface-2: #222222; /* Elevated Surface - Layer 2 */
+  --color-surface-3: #2A2A2A; /* Highlight - Layer 3 */
+
+  --color-surface-border: rgba(255, 255, 255, 0.08); /* Sophisticated thin borders */
+  --color-surface-border-light: rgba(255, 255, 255, 0.15);
+
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #9CA3AF;
+  --color-text-dim: #6B7280;
+  --color-text-muted: #4B5563;
+
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+}
+
+@layer base {
+  body {
+    @apply bg-surface-0 text-text-primary font-sans antialiased selection:bg-brand-primary/30 min-h-screen;
+  }
+}
+
+@layer components {
+  /* Layered Card System */
+  .card-premium {
+    @apply bg-gradient-to-b from-surface-1 to-[#171717] border border-surface-border rounded-2xl shadow-xl transition-all duration-300;
+  }
+  
+  .card-premium:hover {
+    @apply border-surface-border-light shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5),0_0_20px_rgba(124,58,237,0.03)];
+  }
+
+  .card-elevated {
+    @apply bg-surface-2 border border-surface-border-light rounded-2xl shadow-2xl;
+  }
+
+  /* Interactive Elements */
+  .btn-primary {
+    @apply bg-brand-primary text-white font-semibold px-5 py-2.5 rounded-xl 
+           hover:bg-brand-primary-gradient hover:shadow-[0_0_25px_rgba(124,58,237,0.4)] 
+           transition-all active:scale-[0.98] flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply bg-surface-2 border border-surface-border text-text-secondary font-semibold px-4 py-2 rounded-xl 
+           hover:bg-surface-3 hover:text-white transition-all active:scale-[0.98] flex items-center justify-center gap-2;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary transition-all duration-200 hover:bg-white/[0.04] hover:text-white relative;
+  }
+
+  .sidebar-item-active {
+    @apply bg-white/[0.06] text-text-primary font-semibold shadow-[0_0_20px_rgba(124,58,237,0.05)];
+  }
+
+  .sidebar-icon-active {
+    @apply text-brand-primary drop-shadow-[0_0_8px_rgba(124,58,237,0.6)];
+  }
+
+  .badge-premium {
+    @apply text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border border-surface-border-light bg-surface-2 text-text-secondary;
+  }
+
+  .badge-ai {
+    @apply text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border border-brand-primary/30 bg-brand-primary/10 text-brand-primary shadow-[0_0_10px_rgba(124,58,237,0.2)];
+  }
+
+  /* High Impact Button Animation */
+  .btn-skew-reveal {
+    @apply relative overflow-hidden bg-brand-primary font-bold text-white px-6 py-2.5 rounded-full transition-all duration-300 flex items-center justify-center gap-2;
+  }
+
+  .btn-skew-reveal span {
+    @apply relative z-10 transition-colors duration-400;
+  }
+
+  .btn-skew-reveal:hover span {
+    @apply text-surface-0;
+  }
+
+  .btn-skew-reveal::before {
+    content: "";
+    @apply absolute top-0 left-[-15%] w-[130%] h-full bg-[#000] z-0 skew-x-[30deg] 
+           transition-transform duration-500 ease-[cubic-bezier(0.3,1,0.8,1)];
+  }
+
+  .btn-skew-reveal:hover::before {
+    @apply translate-x-full;
+  }
+
+  /* Brief Specific Styles */
+  .doc-section {
+    @apply border-b border-surface-border pb-12 mb-12 last:border-0;
+  }
+  
+  .glass-header {
+    @apply bg-gradient-to-b from-brand-primary/5 to-transparent border-b border-surface-border;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

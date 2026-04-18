@@ -2,6 +2,8 @@
 
 Hackathon-ready **AI operating system** for founders: a **React + Vite** dashboard (`frontend/`) backed by a **FastAPI** service (`founderOS-backend/`) with agents for BI, email, talent, leads, and CS bot APIs.
 
+**Live app (Netlify):** [https://rococo-zabaione-7e5b62.netlify.app](https://rococo-zabaione-7e5b62.netlify.app)
+
 ---
 
 ## App URLs
@@ -9,12 +11,12 @@ Hackathon-ready **AI operating system** for founders: a **React + Vite** dashboa
 | Environment | App (UI) | API (backend) |
 |-------------|----------|----------------|
 | **Local (default)** | [http://localhost:3000](http://localhost:3000) | [http://127.0.0.1:8000](http://127.0.0.1:8000) |
-| **Production** | *Deploy to Netlify and paste your site URL here* | *Deploy to Render and paste your service URL here* |
+| **Production** | [https://rococo-zabaione-7e5b62.netlify.app](https://rococo-zabaione-7e5b62.netlify.app) | *Add your Render URL when deployed — set as `VITE_API_BASE_URL` on Netlify* |
 
-After you deploy:
+For production wiring:
 
-1. Put your **Netlify** URL in the table above (and in Render as `FRONTEND_URL` for CORS).
-2. Put your **Render** URL in the table above and in Netlify as `VITE_API_BASE_URL` (build env).
+1. Set **`FRONTEND_URL`** on Render to `https://rococo-zabaione-7e5b62.netlify.app` (for CORS).
+2. Set **`VITE_API_BASE_URL`** on Netlify to your Render API URL (no trailing slash), then redeploy the frontend.
 
 Health check (local or prod): `GET /health` on the API base (e.g. [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)).
 

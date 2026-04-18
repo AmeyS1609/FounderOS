@@ -2,6 +2,8 @@
 
 React + TypeScript **Vite** app for the FounderOS dashboard. Deploy target: **Netlify** (base directory = `frontend`). Parent docs: [repo root README](../README.md).
 
+**Deployed app:** [https://rococo-zabaione-7e5b62.netlify.app](https://rococo-zabaione-7e5b62.netlify.app)
+
 ---
 
 ## App URL (local)

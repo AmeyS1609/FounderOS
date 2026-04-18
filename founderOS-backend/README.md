@@ -2,6 +2,8 @@
 
 FastAPI service for FounderOS: BI analysis, email, talent search, leads webhook, and CS bot routes. Deploy target: **Render** (see repo root `README.md` and `../founderOS/DEPLOY.md`).
 
+**Live UI (Netlify):** [https://rococo-zabaione-7e5b62.netlify.app](https://rococo-zabaione-7e5b62.netlify.app)
+
 ---
 
 ## Requirements

@@ -4,6 +4,8 @@ Hackathon-ready **AI operating system** for founders: a **React + Vite** dashboa
 
 **Live app (Netlify):** [https://rococo-zabaione-7e5b62.netlify.app](https://rococo-zabaione-7e5b62.netlify.app)
 
+**Slides:** [https://drive.google.com/file/d/1JNWjv7F1e2nGAqfX5X0UtkssaEx8EAgT/view?usp=sharing](https://drive.google.com/file/d/1JNWjv7F1e2nGAqfX5X0UtkssaEx8EAgT/view?usp=sharing)
+
 ---
 
 ## App URLs

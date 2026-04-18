@@ -96,16 +96,15 @@ Return a JSON array of 5 candidate objects."""
 
     doc_id = "unsaved"
     try:
-        db = firebase.get_db()
-        doc = {
-            "role": body.role,
-            "location": body.location,
-            "experience_years": body.experience_years,
-            "candidates": candidates,
-            "created_at": firebase.SERVER_TIMESTAMP,
-        }
-        _, ref = db.collection("candidates").add(doc)
-        doc_id = ref.id
+        doc_id = firebase.create_document(
+            "candidates",
+            {
+                "role": body.role,
+                "location": body.location,
+                "experience_years": body.experience_years,
+                "candidates": candidates,
+            },
+        )
     except Exception as e:  # noqa: BLE001
         logger.warning("Candidates Firestore write skipped: %s", e)
 

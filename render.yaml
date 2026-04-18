@@ -1,0 +1,12 @@
+# Render Blueprint — connect repo and apply, or create a Web Service manually with the same values.
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: founderos-backend
+    runtime: python
+    region: oregon
+    plan: free
+    rootDir: founderOS-backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health

@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Screen, Lead, EmailDraft, Metric } from './types';
+import { apiFetch } from './lib/api';
 
 // Mock Data
 const METRICS: Metric[] = [
@@ -507,11 +508,45 @@ function EmailRow({ sender, subject, time, ...props }: any) {
 
 function Intel() {
   const [loading, setLoading] = useState(false);
+  const [company, setCompany] = useState('Notion');
+  const [market, setMarket] = useState('SaaS / Productivity');
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [liveBrief, setLiveBrief] = useState<Record<string, unknown> | null>(null);
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
+    setApiError(null);
+    setLiveBrief(null);
     setLoading(true);
-    setTimeout(() => setLoading(false), 2000);
+    try {
+      const res = await apiFetch('/api/bi/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company, market }),
+      });
+      const data = (await res.json()) as Record<string, unknown>;
+      if (!res.ok) {
+        const detail =
+          typeof data.detail === 'string'
+            ? data.detail
+            : Array.isArray(data.detail)
+              ? JSON.stringify(data.detail)
+              : res.statusText;
+        throw new Error(detail || `HTTP ${res.status}`);
+      }
+      setLiveBrief(data);
+      if (data.success === false && data.error) {
+        setApiError(String(data.error));
+      }
+    } catch (e) {
+      setApiError(e instanceof Error ? e.message : 'Request failed');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const analysis = liveBrief?.analysis as Record<string, unknown> | undefined;
+  const swot = analysis?.swot as Record<string, string[]> | undefined;
+  const useLiveSwot = Boolean(liveBrief?.success && swot);
 
   return (
     <motion.div 
@@ -523,14 +558,24 @@ function Intel() {
       <motion.section variants={itemVariants} className="card-premium p-4 flex flex-col md:flex-row items-center gap-4">
         <div className="flex-1 w-full flex items-center gap-4 px-6 py-4 bg-white/[0.02] rounded-xl border border-surface-border">
           <Search size={22} className="text-brand-primary" />
-          <input className="bg-transparent border-none text-xl text-white placeholder:text-text-muted focus:ring-0 w-full font-black tracking-tight" placeholder="Identify Company" defaultValue="Notion" />
+          <input
+            className="bg-transparent border-none text-xl text-white placeholder:text-text-muted focus:ring-0 w-full font-black tracking-tight"
+            placeholder="Identify Company"
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+          />
         </div>
         <div className="flex-1 w-full flex items-center gap-4 px-6 py-4 bg-white/[0.02] rounded-xl border border-surface-border">
           <TrendingUp size={22} className="text-brand-primary" />
-          <input className="bg-transparent border-none text-xl text-white placeholder:text-text-muted focus:ring-0 w-full font-black tracking-tight" placeholder="Declare Market" defaultValue="SaaS / Productivity" />
+          <input
+            className="bg-transparent border-none text-xl text-white placeholder:text-text-muted focus:ring-0 w-full font-black tracking-tight"
+            placeholder="Declare Market"
+            value={market}
+            onChange={(e) => setMarket(e.target.value)}
+          />
         </div>
         <button 
-          onClick={handleAnalyze}
+          onClick={() => void handleAnalyze()}
           className="btn-skew-reveal py-5 px-10 text-lg group"
         >
           <div className="flex items-center gap-3 relative z-10">
@@ -539,6 +584,15 @@ function Intel() {
           </div>
         </button>
       </motion.section>
+
+      {apiError && (
+        <p className="text-center text-sm font-medium text-error px-4">{apiError}</p>
+      )}
+      {liveBrief?.success === true && typeof liveBrief.id === 'string' && (
+        <p className="text-center text-xs font-bold uppercase tracking-widest text-success">
+          Live briefing saved (id: {liveBrief.id}) — API base {import.meta.env.VITE_API_BASE_URL || 'default localhost'}
+        </p>
+      )}
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-32 space-y-8">
@@ -565,10 +619,21 @@ function Intel() {
               <p className="text-text-dim font-bold uppercase tracking-widest text-xs">AI-Derived Strategic Invariants</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <SwotCard variants={itemVariants} title="Strengths" status="up" items={["Dominant market share", "Premium brand perception", "Network effects"]} />
-              <SwotCard variants={itemVariants} title="Weaknesses" status="down" items={["High customer acquisition cost", "Legacy tech debt", "Limited mobile optimization"]} />
-              <SwotCard variants={itemVariants} title="Opportunities" color="text-brand-primary" status="normal" border="border-brand-primary/40" items={["AI-native feature expansion", "Underserved EU markets", "Enterprise tier growth"]} />
-              <SwotCard variants={itemVariants} title="Threats" color="text-warning" status="error" border="border-warning/40" items={["Emerging open-source clones", "Regulatory scrutiny", "Talent poaching"]} />
+              {useLiveSwot && swot ? (
+                <>
+                  <SwotCard variants={itemVariants} title="Strengths" status="up" items={swot.strengths ?? []} />
+                  <SwotCard variants={itemVariants} title="Weaknesses" status="down" items={swot.weaknesses ?? []} />
+                  <SwotCard variants={itemVariants} title="Opportunities" color="text-brand-primary" status="normal" border="border-brand-primary/40" items={swot.opportunities ?? []} />
+                  <SwotCard variants={itemVariants} title="Threats" color="text-warning" status="error" border="border-warning/40" items={swot.threats ?? []} />
+                </>
+              ) : (
+                <>
+                  <SwotCard variants={itemVariants} title="Strengths" status="up" items={["Dominant market share", "Premium brand perception", "Network effects"]} />
+                  <SwotCard variants={itemVariants} title="Weaknesses" status="down" items={["High customer acquisition cost", "Legacy tech debt", "Limited mobile optimization"]} />
+                  <SwotCard variants={itemVariants} title="Opportunities" color="text-brand-primary" status="normal" border="border-brand-primary/40" items={["AI-native feature expansion", "Underserved EU markets", "Enterprise tier growth"]} />
+                  <SwotCard variants={itemVariants} title="Threats" color="text-warning" status="error" border="border-warning/40" items={["Emerging open-source clones", "Regulatory scrutiny", "Talent poaching"]} />
+                </>
+              )}
             </div>
           </motion.section>
 

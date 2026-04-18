@@ -13,6 +13,8 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 
 _ROOT = Path(__file__).resolve().parent.parent
+_REPO = _ROOT.parent
+load_dotenv(_REPO / ".env", override=True)
 load_dotenv(_ROOT / ".env", override=True)
 load_dotenv(override=True)
 

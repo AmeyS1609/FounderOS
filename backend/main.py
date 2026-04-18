@@ -3,15 +3,23 @@
 from __future__ import annotations
 
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
+import logging
+
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
+logger = logging.getLogger(__name__)
+
 _ROOT = Path(__file__).resolve().parent
+_REPO_ROOT = _ROOT.parent
+# Repo root .env first, then backend/.env (backend wins for overrides)
+load_dotenv(_REPO_ROOT / ".env", override=True)
 load_dotenv(_ROOT / ".env", override=True)
 load_dotenv(override=True)
 
@@ -24,12 +32,37 @@ def _debug() -> bool:
     return os.getenv("DEBUG", "").lower() in ("1", "true", "yes")
 
 
-app = FastAPI(title="FounderOS API")
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    from backend.services import firebase as firebase_mod
+
+    app.state.firestore_status = firebase_mod.probe_firestore()
+    fs = app.state.firestore_status
+    if fs.get("connected"):
+        logger.info(
+            "Firestore OK (project_id=%s, path=%s)",
+            fs.get("project_id") or "?",
+            fs.get("credentials_path") or "?",
+        )
+    else:
+        logger.warning(
+            "Firestore not ready: credentials_file=%s detail=%s path=%s",
+            fs.get("credentials_file"),
+            fs.get("detail"),
+            fs.get("credentials_path"),
+        )
+    yield
+
+
+app = FastAPI(title="FounderOS API", lifespan=_lifespan)
 
 _cors_origins = [
     "http://localhost:3000",
     "http://localhost:5173",
+    "http://localhost:8080",
     "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8080",
 ]
 _extra_origin = os.getenv("FRONTEND_URL", "").strip()
 if _extra_origin and _extra_origin not in _cors_origins:
@@ -50,20 +83,6 @@ app.include_router(leads.router, prefix="/api/leads", tags=["leads"])
 app.include_router(csbot.router, prefix="/api/csbot", tags=["csbot"])
 
 
-@app.on_event("startup")
-async def _startup_init_firebase() -> None:
-    try:
-        from pathlib import Path
-
-        from backend.services.firebase import init_firebase
-
-        raw = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "./firebase-service-account.json")
-        if Path(raw).expanduser().resolve().is_file():
-            init_firebase()
-    except Exception:  # noqa: BLE001
-        pass
-
-
 @app.options("/{full_path:path}")
 async def options_preflight(full_path: str) -> Response:  # noqa: ARG001
     return Response(status_code=200)
@@ -72,6 +91,32 @@ async def options_preflight(full_path: str) -> Response:  # noqa: ARG001
 @app.get("/")
 async def health() -> dict[str, Any]:
     return {"status": "FounderOS running", "agents": 5}
+
+
+@app.get("/health")
+async def health_alias() -> dict[str, Any]:
+    """Liveness check (same payload as GET /)."""
+    return {"status": "FounderOS running", "agents": 5}
+
+
+@app.get("/api/firestore/status")
+async def firestore_status(request: Request) -> dict[str, Any]:
+    """Firestore configuration probe (no secrets)."""
+    st = getattr(request.app.state, "firestore_status", None)
+    if not isinstance(st, dict):
+        return {
+            "credentials_file": False,
+            "connected": False,
+            "detail": "status_not_initialized",
+            "project_id": "",
+        }
+    return {
+        "credentials_file": bool(st.get("credentials_file")),
+        "connected": bool(st.get("connected")),
+        "detail": str(st.get("detail", "")),
+        "project_id": str(st.get("project_id", "")),
+        "credentials_path_set": bool(st.get("credentials_path")),
+    }
 
 
 @app.get("/api/debug/mock-all")

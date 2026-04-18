@@ -75,15 +75,14 @@ Return JSON with exactly these keys:
 
     doc_id = "unsaved"
     try:
-        db = firebase.get_db()
-        doc = {
-            "company": body.company,
-            "market": body.market,
-            "analysis": result,
-            "created_at": firebase.SERVER_TIMESTAMP,
-        }
-        _, ref = db.collection("briefings").add(doc)
-        doc_id = ref.id
+        doc_id = firebase.create_document(
+            "briefings",
+            {
+                "company": body.company,
+                "market": body.market,
+                "analysis": result,
+            },
+        )
     except Exception as e:  # noqa: BLE001
         logger.warning("Briefings Firestore write skipped: %s", e)
 

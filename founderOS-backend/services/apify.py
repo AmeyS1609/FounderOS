@@ -12,10 +12,8 @@ from typing import Any
 import httpx
 from dotenv import load_dotenv
 
-_ROOT = Path(__file__).resolve().parent.parent
-_REPO = _ROOT.parent
-load_dotenv(_REPO / ".env", override=True)
-load_dotenv(_ROOT / ".env", override=True)
+_APP_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(_APP_ROOT / ".env", override=True)
 load_dotenv(override=True)
 
 logger = logging.getLogger(__name__)
@@ -32,7 +30,8 @@ def _normalize_actor(actor: str) -> str:
 
 
 def _token() -> str | None:
-    return os.getenv("APIFY_TOKEN")
+    t = os.getenv("APIFY_TOKEN")
+    return t.strip() if t else None
 
 
 async def run_actor(
@@ -40,17 +39,13 @@ async def run_actor(
     input_data: dict[str, Any],
     timeout_seconds: int = 90,
 ) -> list[Any]:
-    """
-    Start actor run, poll until success/fail/timeout.
-    Backoff sleeps between polls: 3,5,10,15,20, then 20s repeatedly.
-    """
+    """Start actor run, poll until success/fail/timeout."""
     token = _token()
     if not token:
-        logger.error("APIFY_TOKEN is not set")
+        logger.warning("APIFY_TOKEN is not set — skipping Apify actor run (use empty list)")
         return []
 
     aid = _normalize_actor(actor_id)
-    elapsed = 0.0
     t0 = time.monotonic()
     backoff_schedule = [3, 5, 10, 15, 20]
     poll_index = 0
@@ -73,11 +68,7 @@ async def run_actor(
             while True:
                 elapsed = time.monotonic() - t0
                 if elapsed >= timeout_seconds:
-                    logger.warning(
-                        "Apify actor %s timed out after %.0fs",
-                        actor_id,
-                        elapsed,
-                    )
+                    logger.warning("Apify actor %s timed out after %.0fs", actor_id, elapsed)
                     return []
 
                 st = await client.get(f"{APIFY_BASE}/actor-runs/{run_id}")
@@ -101,8 +92,6 @@ async def run_actor(
                 if status in ("FAILED", "ABORTED", "TIMED-OUT"):
                     logger.error("Apify actor %s failed: %s", actor_id, status)
                     return []
-                if status not in ("SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT") and status is not None:
-                    logger.debug("Apify actor %s status=%s (continuing)", actor_id, status)
 
                 sleep_s = (
                     backoff_schedule[poll_index]
@@ -112,11 +101,6 @@ async def run_actor(
                 poll_index += 1
                 remaining = timeout_seconds - (time.monotonic() - t0)
                 if remaining <= 0:
-                    logger.warning(
-                        "Apify actor %s timed out after %.0fs",
-                        actor_id,
-                        time.monotonic() - t0,
-                    )
                     return []
                 await asyncio.sleep(min(sleep_s, max(0.1, remaining)))
 
@@ -138,7 +122,7 @@ async def scrape_url(url: str, max_pages: int = 3) -> list[Any]:
 
 
 async def scrape_news(query: str, max_results: int = 10) -> list[Any]:
-    """Google search results via Apify."""
+    """Google search results via Apify (news / web context for BI)."""
     return await run_actor(
         "apify/google-search-scraper",
         {

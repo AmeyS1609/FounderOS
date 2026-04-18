@@ -9,7 +9,8 @@ from typing import Any
 from fastapi import APIRouter, Request
 from google.cloud.firestore import Query
 
-from services import claude, firebase
+from backend.services import claude
+from backend.services import firebase
 
 logger = logging.getLogger(__name__)
 

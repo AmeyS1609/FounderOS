@@ -8,7 +8,8 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from services import claude, firebase, rapidapi
+from backend.services import claude, firebase
+from backend.services import rapidapi
 
 logger = logging.getLogger(__name__)
 

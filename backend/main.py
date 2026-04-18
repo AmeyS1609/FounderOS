@@ -15,8 +15,9 @@ _ROOT = Path(__file__).resolve().parent
 load_dotenv(_ROOT / ".env", override=True)
 load_dotenv(override=True)
 
-from routes import bi, csbot, email, leads, talent  # noqa: E402
-from services import rapidapi  # noqa: E402
+from backend.routes import bi, csbot, email, leads
+from backend.routes import talent  # noqa: E402
+from backend.services import rapidapi  # noqa: E402
 
 
 def _debug() -> bool:
@@ -54,7 +55,7 @@ async def _startup_init_firebase() -> None:
     try:
         from pathlib import Path
 
-        from services.firebase import init_firebase
+        from backend.services.firebase import init_firebase
 
         raw = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "./firebase-service-account.json")
         if Path(raw).expanduser().resolve().is_file():

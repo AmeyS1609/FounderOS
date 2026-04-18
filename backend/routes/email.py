@@ -9,7 +9,8 @@ import httpx
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
-from services import claude, firebase
+from backend.services import claude
+from backend.services import firebase
 
 logger = logging.getLogger(__name__)
 

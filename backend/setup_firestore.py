@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from services.firebase import SERVER_TIMESTAMP, check_permissions, get_db, init_firebase
+from backend.services.firebase import SERVER_TIMESTAMP, check_permissions, get_db, init_firebase
 
 
 def main() -> None:

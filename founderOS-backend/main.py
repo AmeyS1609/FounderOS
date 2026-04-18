@@ -53,10 +53,11 @@ def _cors_origins() -> list[str]:
 
 
 def _cors_origin_regex() -> str | None:
-    """Netlify deploy + production URLs match by default; set CORS_ORIGIN_REGEX= to disable."""
+    """Netlify + Railway public hosts by default; set CORS_ORIGIN_REGEX= to disable."""
     raw = os.getenv("CORS_ORIGIN_REGEX")
     if raw is None:
-        return r"https://.*\.netlify\.app$"
+        # *.netlify.app (UI) + *.up.railway.app (public API URL / previews)
+        return r"https://.*\.(netlify\.app|up\.railway\.app)$"
     stripped = raw.strip()
     return stripped or None
 

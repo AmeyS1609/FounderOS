@@ -88,3 +88,10 @@ python test_all.py
 - **Health check path:** `/health`
 
 Details: **`../founderOS/DEPLOY.md`**.
+
+## Production (Railway)
+
+- Point the service at **`founderOS-backend`** (repo subfolder).
+- **Start command** (also in `railway.toml`): `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- Set **`FRONTEND_URL`** to your Netlify UI, e.g. `https://rococo-zabaione-7e5b62.netlify.app`, so browsers can call the API directly.
+- Optional: default CORS regex already allows `*.netlify.app` and `*.up.railway.app`; override with **`CORS_ORIGIN_REGEX`** if needed.

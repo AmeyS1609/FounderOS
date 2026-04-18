@@ -2,7 +2,4 @@
   command = "npm run build"
   publish = "dist"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# SPA + optional /api proxy: rules live in `public/_redirects` (generated in `prebuild` from BACKEND_PUBLIC_URL).

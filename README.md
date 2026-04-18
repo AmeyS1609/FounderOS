@@ -11,12 +11,20 @@ Hackathon-ready **AI operating system** for founders: a **React + Vite** dashboa
 | Environment | App (UI) | API (backend) |
 |-------------|----------|----------------|
 | **Local (default)** | [http://localhost:3000](http://localhost:3000) | [http://127.0.0.1:8000](http://127.0.0.1:8000) |
-| **Production** | [https://rococo-zabaione-7e5b62.netlify.app](https://rococo-zabaione-7e5b62.netlify.app) | *Add your Render URL when deployed — set as `VITE_API_BASE_URL` on Netlify* |
+| **Production** | [https://rococo-zabaione-7e5b62.netlify.app](https://rococo-zabaione-7e5b62.netlify.app) | Your Railway / Render public URL (see wiring above) |
 
-For production wiring:
+For production wiring (pick **one** API strategy on Netlify):
 
-1. Set **`FRONTEND_URL`** on Render to `https://rococo-zabaione-7e5b62.netlify.app` (for CORS).
-2. Set **`VITE_API_BASE_URL`** on Netlify to your Render API URL (no trailing slash), then redeploy the frontend.
+**A — Direct API (simple)**  
+1. Backend (Railway or Render): set **`FRONTEND_URL`** = `https://rococo-zabaione-7e5b62.netlify.app` (CORS).  
+2. Netlify → **Environment variables** → add **`VITE_API_BASE_URL`** = your public API URL (e.g. `https://xxx.up.railway.app`), **no trailing slash** → **redeploy** (required so Vite bakes it in).
+
+**B — Same-origin `/api` proxy (fewer CORS surprises)**  
+1. Netlify → add **`BACKEND_PUBLIC_URL`** = your public API base (e.g. `https://xxx.up.railway.app`, no `/api` suffix).  
+2. Leave **`VITE_API_BASE_URL` unset** (or delete it) so the app calls `/api/...` on the Netlify domain and Netlify proxies to the backend.  
+3. Still set **`FRONTEND_URL`** on the backend if you call the API from other sites.
+
+**If “UI loads but Intel / API does nothing”:** open DevTools → **Network** on `POST /api/bi/analyze`. Common causes: **`VITE_API_BASE_URL` missing** (build falls back to `localhost`), wrong backend URL, **CORS** (fix `FRONTEND_URL`), or **Firestore** not configured on the host (`/health` → `firestore.initialized: false` still allows BI, but briefing id stays `unsaved`).
 
 Health check (local or prod): `GET /health` on the API base (e.g. [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)).
 

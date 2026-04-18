@@ -1,0 +1,6 @@
+# Railway — in the service settings, set the root directory to `founderOS-backend`.
+# https://docs.railway.app/guides/config-as-code
+
+[deploy]
+startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+restartPolicyType = "ON_FAILURE"

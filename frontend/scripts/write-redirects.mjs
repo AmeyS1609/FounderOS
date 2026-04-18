@@ -1,7 +1,7 @@
 /**
  * Writes Netlify `public/_redirects` before Vite build.
- * Set BACKEND_PUBLIC_URL on Netlify (e.g. https://your-service.up.railway.app) to proxy
- * browser calls from /api/* → backend (same-origin, no CORS headaches).
+ * Set BACKEND_PUBLIC_URL on Netlify (e.g. https://xxx.onrender.com) so the browser
+ * can use same-origin paths: /api/*, /health, /env-check → backend.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,6 +16,8 @@ const backend = (process.env.BACKEND_PUBLIC_URL || '').trim().replace(/\/$/, '')
 const lines = [];
 if (backend) {
   lines.push(`/api/*  ${backend}/api/:splat  200`);
+  lines.push(`/health  ${backend}/health  200`);
+  lines.push(`/env-check  ${backend}/env-check  200`);
 }
 lines.push('/*  /index.html  200');
 
@@ -24,5 +26,5 @@ fs.writeFileSync(out, `${lines.join('\n')}\n`);
 // eslint-disable-next-line no-console
 console.log(
   `[write-redirects] wrote ${out}`,
-  backend ? `(API proxy /api → ${backend})` : '(SPA only — set BACKEND_PUBLIC_URL on Netlify to enable /api proxy)',
+  backend ? `(proxy /api,/health,/env-check → ${backend})` : '(SPA only — set BACKEND_PUBLIC_URL on Netlify for API proxy)',
 );

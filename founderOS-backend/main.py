@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -53,11 +53,11 @@ def _cors_origins() -> list[str]:
 
 
 def _cors_origin_regex() -> str | None:
-    """Netlify + Railway public hosts by default; set CORS_ORIGIN_REGEX= to disable."""
+    """Netlify + Render + Railway public hosts by default; set CORS_ORIGIN_REGEX= to disable."""
     raw = os.getenv("CORS_ORIGIN_REGEX")
     if raw is None:
-        # *.netlify.app (UI) + *.up.railway.app (public API URL / previews)
-        return r"https://.*\.(netlify\.app|up\.railway\.app)$"
+        # UI on Netlify; Render/Railway previews; *.onrender.com if you ever hit API from a Render-hosted page
+        return r"https://.*(\.(netlify\.app|onrender\.com|up\.railway\.app))$"
     stripped = raw.strip()
     return stripped or None
 
@@ -81,6 +81,22 @@ async def _lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="FounderOS Backend", lifespan=_lifespan)
+
+
+@app.middleware("http")
+async def _log_requests(request: Request, call_next):
+    origin = request.headers.get("origin") or "-"
+    if request.url.path.startswith("/api") or request.url.path in ("/health", "/env-check", "/"):
+        logger.info("HTTP %s %s origin=%s", request.method, request.url.path, origin)
+    try:
+        response = await call_next(request)
+        if request.url.path.startswith("/api") or request.url.path in ("/health", "/env-check"):
+            logger.info("HTTP %s %s -> %s", request.method, request.url.path, response.status_code)
+        return response
+    except Exception:
+        logger.exception("HTTP %s %s failed", request.method, request.url.path)
+        raise
+
 
 _cors_list = _cors_origins()
 _cors_regex = _cors_origin_regex()

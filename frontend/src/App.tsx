@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   LayoutDashboard, 
   Lightbulb, 
@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Screen, Lead, EmailDraft, Metric } from './types';
-import { apiFetch } from './lib/api';
+import { apiJson, fetchBackendHealth, getApiOriginLabel } from './lib/api';
 
 // Mock Data
 const METRICS: Metric[] = [
@@ -79,6 +79,20 @@ const EMAIL_DRAFTS: EmailDraft[] = [
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard');
+  const [apiHealth, setApiHealth] = useState<'checking' | 'ok' | 'error'>('checking');
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const h = await fetchBackendHealth();
+      if (!cancelled) {
+        setApiHealth(h && (h as { ok?: boolean }).ok === true ? 'ok' : 'error');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -177,9 +191,15 @@ export default function App() {
             <p className="text-[10px] text-text-dim font-bold uppercase tracking-widest mt-0.5">Updated 6:32 AM • System Nominal</p>
           </div>
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-success animate-pulse shadow-[0_0_8px_#10B981]" />
-              <span className="text-[10px] font-bold text-text-dim uppercase tracking-widest">Global Status: Active</span>
+            <div className="flex items-center gap-2" title={getApiOriginLabel()}>
+              <div
+                className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_8px_#10B981] ${
+                  apiHealth === 'ok' ? 'bg-success' : apiHealth === 'error' ? 'bg-error' : 'bg-warning'
+                }`}
+              />
+              <span className="text-[10px] font-bold text-text-dim uppercase tracking-widest">
+                API: {apiHealth === 'checking' ? 'Checking…' : apiHealth === 'ok' ? 'Connected' : 'Unreachable'}
+              </span>
             </div>
             <div className="h-6 w-px bg-surface-border" />
             <div className="flex items-center gap-2">
@@ -518,21 +538,10 @@ function Intel() {
     setLiveBrief(null);
     setLoading(true);
     try {
-      const res = await apiFetch('/api/bi/analyze', {
+      const data = await apiJson<Record<string, unknown>>('/api/bi/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ company, market }),
       });
-      const data = (await res.json()) as Record<string, unknown>;
-      if (!res.ok) {
-        const detail =
-          typeof data.detail === 'string'
-            ? data.detail
-            : Array.isArray(data.detail)
-              ? JSON.stringify(data.detail)
-              : res.statusText;
-        throw new Error(detail || `HTTP ${res.status}`);
-      }
       setLiveBrief(data);
       if (data.success === false && data.error) {
         setApiError(String(data.error));
@@ -590,7 +599,7 @@ function Intel() {
       )}
       {liveBrief?.success === true && typeof liveBrief.id === 'string' && (
         <p className="text-center text-xs font-bold uppercase tracking-widest text-success">
-          Live briefing saved (id: {liveBrief.id}) — API base {import.meta.env.VITE_API_BASE_URL || 'default localhost'}
+          Live briefing saved (id: {liveBrief.id}) — {getApiOriginLabel()}
         </p>
       )}
 
@@ -802,6 +811,50 @@ function EmailCard({ sender, subject, date, badge, draft, ...props }: any) {
 
 
 function Talent() {
+  const [role, setRole] = useState('Senior Engineer');
+  const [location, setLocation] = useState('San Francisco / Remote');
+  const [experienceInput, setExperienceInput] = useState('5+ Years');
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [liveCandidates, setLiveCandidates] = useState<Array<Record<string, unknown>> | null>(null);
+
+  const parseExperienceYears = (raw: string): number => {
+    const m = raw.match(/\d+/);
+    if (!m) return 5;
+    const n = parseInt(m[0], 10);
+    return Number.isFinite(n) ? Math.min(50, Math.max(0, n)) : 5;
+  };
+
+  const handleSearch = async () => {
+    setApiError(null);
+    setLiveCandidates(null);
+    setLoading(true);
+    try {
+      const data = await apiJson<{
+        success?: boolean;
+        candidates?: Array<Record<string, unknown>>;
+        warning?: string;
+      }>('/api/talent/search', {
+        method: 'POST',
+        body: JSON.stringify({
+          role,
+          location,
+          experience_years: parseExperienceYears(experienceInput),
+        }),
+      });
+      if (data.warning) {
+        console.warn('[Talent]', data.warning);
+      }
+      setLiveCandidates(Array.isArray(data.candidates) ? data.candidates : []);
+    } catch (e) {
+      setApiError(e instanceof Error ? e.message : 'Search failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showLive = liveCandidates && liveCandidates.length > 0;
+
   return (
     <motion.div 
       variants={containerVariants}
@@ -812,7 +865,9 @@ function Talent() {
       <motion.div variants={itemVariants} className="flex justify-between items-end px-2">
         <div>
           <h2 className="text-3xl font-black text-white tracking-tighter">Human Capital Intel</h2>
-          <p className="text-text-dim font-bold uppercase tracking-widest text-[10px] mt-1">Autonomous Sourcing Active • 18 matches</p>
+          <p className="text-text-dim font-bold uppercase tracking-widest text-[10px] mt-1">
+            {showLive ? `Live results • ${liveCandidates!.length} candidates` : 'Autonomous Sourcing Active • run a search'}
+          </p>
         </div>
       </motion.div>
 
@@ -821,54 +876,90 @@ function Talent() {
           <label className="text-[10px] uppercase font-black text-text-dim tracking-widest">Target Role</label>
           <div className="relative">
             <Users size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-primary" />
-            <input className="w-full bg-surface-base border border-surface-border rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 transition-all font-medium" placeholder="Senior Engineer" defaultValue="Senior Engineer" />
+            <input
+              className="w-full bg-surface-base border border-surface-border rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 transition-all font-medium"
+              placeholder="Senior Engineer"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            />
           </div>
         </div>
         <div className="space-y-3">
           <label className="text-[10px] uppercase font-black text-text-dim tracking-widest">Geographic Hub</label>
           <div className="relative">
             <MapPin size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-primary" />
-            <input className="w-full bg-surface-base border border-surface-border rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 transition-all font-medium" placeholder="San Francisco" defaultValue="San Francisco / Remote" />
+            <input
+              className="w-full bg-surface-base border border-surface-border rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 transition-all font-medium"
+              placeholder="San Francisco"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
           </div>
         </div>
         <div className="space-y-3">
           <label className="text-[10px] uppercase font-black text-text-dim tracking-widest">Experience Level</label>
-          <input className="w-full bg-surface-base border border-surface-border rounded-xl px-4 py-3 text-sm text-white focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 transition-all font-medium" placeholder="Min. 5 years" defaultValue="5+ Years" />
+          <input
+            className="w-full bg-surface-base border border-surface-border rounded-xl px-4 py-3 text-sm text-white focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 transition-all font-medium"
+            placeholder="Min. 5 years"
+            value={experienceInput}
+            onChange={(e) => setExperienceInput(e.target.value)}
+          />
         </div>
-        <button className="btn-skew-reveal h-12 px-8 group">
-          <Search size={18} className="relative z-10" /> 
-          <span className="uppercase tracking-widest text-xs font-black">Refresh Results</span>
+        <button type="button" onClick={() => void handleSearch()} disabled={loading} className="btn-skew-reveal h-12 px-8 group disabled:opacity-50">
+          {loading ? <Clock size={18} className="relative z-10 animate-spin" /> : <Search size={18} className="relative z-10" />} 
+          <span className="uppercase tracking-widest text-xs font-black">{loading ? 'Searching…' : 'Refresh Results'}</span>
         </button>
       </motion.section>
 
+      {apiError && (
+        <p className="text-center text-sm font-medium text-error px-4">{apiError}</p>
+      )}
+
       <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        <CandidateCard 
-          variants={itemVariants}
-          name="Sarah Chen" 
-          role="Senior Frontend Engineer" 
-          loc="San Francisco, CA" 
-          score={9.4} 
-          previous="cto @ greenflow"
-          tags={['React', 'Web3', 'Growth']}
-        />
-        <CandidateCard 
-          variants={itemVariants}
-          name="Raj Patel" 
-          role="Backend Systems Architect" 
-          loc="New York, NY" 
-          score={7.8} 
-          previous="staff engineer @ stripe"
-          tags={['Go', 'Rust', 'Infrastructure']}
-        />
-        <CandidateCard 
-          variants={itemVariants}
-          name="Elena Rodriguez" 
-          role="Product Growth Lead" 
-          loc="Austin, TX / Remote" 
-          score={8.9} 
-          previous="lead product @ notion"
-          tags={['PLG', 'Strategy', 'AI']}
-        />
+        {showLive
+          ? liveCandidates!.map((c, i) => (
+              <CandidateCard
+                key={(c.profile_url as string) || (c.name as string) || String(i)}
+                variants={itemVariants}
+                name={String(c.name ?? 'Candidate')}
+                role={String(c.current_role ?? '')}
+                loc={String(c.location ?? '')}
+                score={Number(c.fit_score ?? 7)}
+                previous={String(c.experience_summary ?? '').slice(0, 80)}
+                tags={[String(c.fit_reason ?? '').slice(0, 40)]}
+              />
+            ))
+          : (
+            <>
+              <CandidateCard 
+                variants={itemVariants}
+                name="Sarah Chen" 
+                role="Senior Frontend Engineer" 
+                loc="San Francisco, CA" 
+                score={9.4} 
+                previous="cto @ greenflow"
+                tags={['React', 'Web3', 'Growth']}
+              />
+              <CandidateCard 
+                variants={itemVariants}
+                name="Raj Patel" 
+                role="Backend Systems Architect" 
+                loc="New York, NY" 
+                score={7.8} 
+                previous="staff engineer @ stripe"
+                tags={['Go', 'Rust', 'Infrastructure']}
+              />
+              <CandidateCard 
+                variants={itemVariants}
+                name="Elena Rodriguez" 
+                role="Product Growth Lead" 
+                loc="Austin, TX / Remote" 
+                score={8.9} 
+                previous="lead product @ notion"
+                tags={['PLG', 'Strategy', 'AI']}
+              />
+            </>
+          )}
       </motion.div>
     </motion.div>
   );
@@ -1040,6 +1131,58 @@ function LeadCard({ name, duration, score, summarizes, status, ...props }: any) 
 }
 
 function CSBot() {
+  const [messages, setMessages] = useState<
+    { type: 'user' | 'bot'; msg: string; flagged?: boolean }[]
+  >([
+    {
+      type: 'bot',
+      msg: 'FounderOS CS Agent ready. Ask anything about billing, trials, or integrations — I reply from your live API.',
+    },
+  ]);
+  const [draft, setDraft] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const sendMessage = async () => {
+    const text = draft.trim();
+    if (!text || loading) return;
+    setDraft('');
+    setApiError(null);
+    const nextThread = [...messages, { type: 'user' as const, msg: text }];
+    setMessages(nextThread);
+    setLoading(true);
+    try {
+      const history = nextThread.slice(0, -1).map((m) => ({
+        role: m.type === 'user' ? 'user' : 'assistant',
+        content: m.msg,
+      }));
+      const data = await apiJson<{
+        reply: string;
+        flagged_for_training?: boolean;
+      }>('/api/csbot/message', {
+        method: 'POST',
+        body: JSON.stringify({
+          message: text,
+          conversation_history: history,
+        }),
+      });
+      setMessages((prev) => [
+        ...prev,
+        {
+          type: 'bot',
+          msg: data.reply,
+          flagged: Boolean(data.flagged_for_training),
+        },
+      ]);
+    } catch (e) {
+      setApiError(e instanceof Error ? e.message : 'Message failed');
+      setMessages((prev) => prev.slice(0, -1));
+      setDraft(text);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -1059,7 +1202,7 @@ function CSBot() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-             <button className="text-text-dim hover:text-white transition-colors"><MoreVertical size={20} /></button>
+             <button type="button" className="text-text-dim hover:text-white transition-colors"><MoreVertical size={20} /></button>
           </div>
         </div>
 
@@ -1069,23 +1212,39 @@ function CSBot() {
           animate="visible"
           className="flex-1 overflow-y-auto p-10 space-y-8 no-scrollbar bg-gradient-to-b from-transparent to-brand-primary/[0.02]"
         >
-          <ChatMessage variants={itemVariants} type="bot" msg="FounderOS CS Agent ready. I am currently monitoring 42 active sessions with a 99.4% resolution accuracy. How can I optimize your customer operations today?" />
-          <ChatMessage variants={itemVariants} type="user" msg="I need to update the global refund policy for our Enterprise tier. Can we automate the initial triage?" />
-          <ChatMessage variants={itemVariants} type="bot" flagged msg="Refund policies for Enterprise require manual oversight per your Sovereign Directive 04. I've flagged the triage logic for your immediate review." />
-          <ChatMessage variants={itemVariants} type="user" msg="What's the current training progress for the upcoming Logistics specialized agent?" />
-          <ChatMessage variants={itemVariants} type="bot" msg="Training is 92.4% complete. 8 outlier signals remain in the queue for manual correction. Expected deployment in 4 hours." />
+          {messages.map((m, i) => (
+            <ChatMessage key={i} variants={itemVariants} type={m.type} msg={m.msg} flagged={m.flagged} />
+          ))}
         </motion.div>
+
+        {apiError && (
+          <p className="px-8 text-xs font-medium text-error">{apiError}</p>
+        )}
 
         <div className="p-8 border-t border-surface-border bg-white/[0.01]">
           <div className="flex items-center gap-4 bg-surface-1 border border-surface-border-light rounded-2xl p-3 shadow-2xl focus-within:border-brand-primary/50 transition-all">
-            <button className="p-3 text-text-dim hover:text-brand-primary transition-colors hover:bg-white/5 rounded-xl"><Paperclip size={20} /></button>
-            <input className="flex-1 bg-transparent border-none focus:ring-0 text-base py-2 text-white placeholder:text-text-muted font-medium" placeholder="Instruct Sovereign Agent..." />
+            <button type="button" className="p-3 text-text-dim hover:text-brand-primary transition-colors hover:bg-white/5 rounded-xl"><Paperclip size={20} /></button>
+            <input
+              className="flex-1 bg-transparent border-none focus:ring-0 text-base py-2 text-white placeholder:text-text-muted font-medium"
+              placeholder="Instruct Sovereign Agent..."
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  void sendMessage();
+                }
+              }}
+            />
             <motion.button 
+              type="button"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="w-12 h-12 bg-brand-primary text-white rounded-xl flex items-center justify-center hover:bg-brand-primary-gradient transition-all shadow-lg hover:shadow-brand-primary/30 active:scale-95"
+              disabled={loading}
+              onClick={() => void sendMessage()}
+              className="w-12 h-12 bg-brand-primary text-white rounded-xl flex items-center justify-center hover:bg-brand-primary-gradient transition-all shadow-lg hover:shadow-brand-primary/30 active:scale-95 disabled:opacity-50"
             >
-              <Send size={20} />
+              {loading ? <Clock size={20} className="animate-spin" /> : <Send size={20} />}
             </motion.button>
           </div>
         </div>
